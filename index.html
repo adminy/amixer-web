@@ -1,55 +1,102 @@
+
 <!DOCTYPE html>
 <html>
 <head>
-    <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.min.css" rel="stylesheet">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
     <style>
-        .v-slider {
-            height: calc(100vh - 150px);
+        body {margin:0; padding:0;background:black}
+        input[type=range][orient=vertical] {
+            writing-mode: bt-lr; /* IE */
+            -webkit-appearance: slider-vertical; /* WebKit */
+            width: 8px;
+            height: 175px;
+            padding: 0 4vw;
         }
+        
     </style>
 </head>
 <body>
-<div id="app">
-    <v-app>
-        <v-container>
-            <v-row>
-                <v-col v-for="mixer in mixers" v-bind:key="mixer.num">
-                    <v-slider @change="change(mixer.name, mixer.left)" vertical v-model="mixer.left"></v-slider>
-                </v-col>
-            </v-row>
-            <v-row>
-                <v-col v-for="mixer in mixers" v-bind:key="mixer.num">
-                    <div style="text-align: center">{{mixer.left}}% <!--{{mixer.right}}%--></div>
-                    <div style="text-align: center">{{mixer.shortname}}</div>
-                </v-col>
-            </v-row>
-        </v-container>
-    </v-app>
-</div>
-<script src="https://cdn.jsdelivr.net/npm/vue@2.x/dist/vue.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.min.js"></script>
-<script>
-    const vm = new Vue({
-        el: '#app',
-        vuetify: new Vuetify({
-            theme: {
-                dark: true
+    <center>
+        <div id='sliders'></div>
+        <div id='values'></div>
+        <div id='names'></div>
+    </center>
+    <script>
+        const sliders = document.getElementById('sliders')
+        const values = document.getElementById('values')
+        const names = document.getElementById('names')
+        window.fetch('scontents').then(res => res.json()).then(mixers => {
+            const loadedValues = mixers.map(mixer => mixer.left)
+            for(const mixer of mixers) {
+                const slider = document.createElement('input')
+                slider.type = 'range'
+                slider.setAttribute('orient', 'vertical')
+                slider.setAttribute('min', 0)
+                slider.setAttribute('max', 100)
+                slider.setAttribute('value', mixer.left) //mixer.right is the same thing "_"
+                slider.setAttribute('id', 'mixer_' + mixer.num)
+                slider.onchange = e => {
+                    values.children[mixer.num].textContent = slider.value + '%'
+                    loadedValues[mixer.num] = slider.value
+                    window.fetch(`sset?name=${encodeURIComponent(mixer.name)}&left=${slider.value}&right=${slider.value}`)
+                }
+                sliders.appendChild(slider)
+                const value = document.createElement('span')
+                value.style.padding = '0 3.2vw'
+                value.style.color = 'white'
+                value.textContent = mixer.left + '%'
+                values.appendChild(value)
+                const name = document.createElement('span')
+                name.style.padding = '0 2.5vw'
+                name.style.color = 'white'
+                name.textContent = mixer.shortname
+                names.appendChild(name)
             }
-        }),
-        data: {
-            mixers: []
-        },
-        methods: {
-            change: function (name, value) {
-                window.fetch(`sset?name=${encodeURIComponent(name)}&left=${value}&right=${value}`);
+            //https://github.com/ejci/Chrome-Audio-EQ/blob/a748d742ca2893dcb5f0a5ea965b3b075ebfc33b/extension/common/const.js
+            const presets = {
+                None: [50, 50, 50, 50, 50, 50, 50, 50, 50, 50], //all gains sit at 0, not positive or negative
+                Classical: [50, 50, 50, 50, 50, 50, 28, 28, 28, 20],
+                Club: [50, 50, 74, 67, 67, 67, 60, 50, 50, 50],
+                Dance: [79, 72, 57, 50, 50, 33, 28, 28, 50, 50],
+                ['Full Bass']: [74, 79, 79, 67, 55, 38, 26, 19, 16, 16],
+                ['Full Bass & Treble']: [72, 67, 50, 28, 36, 55, 74, 84, 86, 86],
+                ['Full Treble']: [21, 21, 21, 38, 57, 84, 98, 98, 98, 100],
+                Headphones: [64, 84, 67, 40, 43, 55, 64, 79, 88, 93],
+                ['Laptop Speakers']: [64, 84, 67, 40, 43, 55, 64, 79, 88, 93],
+                ['Large Hall']: [81, 81, 67, 67, 50, 36, 36, 36, 50, 50],
+                Live: [36, 50, 62, 67, 67, 67, 62, 57, 57, 57],
+                Party: [72, 72, 50, 50, 50, 50, 50, 50, 72, 72],
+                Pop: [55, 64, 72, 74, 67, 50, 43, 43, 55, 55],
+                Reggae: [50, 50, 50, 33, 50, 69, 69, 50, 50, 50],
+                Rock: [74, 64, 33, 26, 40, 62, 76, 84, 84, 84],
+                Ska: [43, 36, 38, 50, 62, 67, 76, 79, 84, 79],
+                Soft: [64, 55, 50, 43, 50, 62, 74, 79, 84, 86],
+                ['Soft Rock']: [62, 62, 57, 50, 38, 33, 40, 50, 57, 76],
+                Techno: [74, 67, 50, 33, 36, 50, 74, 79, 79, 76]
             }
-        }
-    });
-    window.fetch('scontents').then(res => res.json()).then(data => {
-        vm.mixers = data;
-    });
-</script>
+            const select = document.createElement('select')
+            select.style.position = 'absolute'
+            select.style.right = '20px'
+            for(const preset in presets) {
+                const option = document.createElement('option')
+                option.value = preset
+                option.textContent = preset
+                //default option guess
+                if(presets[preset].every((gain, index) => loadedValues[index] == gain)) {
+                    option.setAttribute('selected', 'selected')
+                }
+                select.appendChild(option)
+            }
+            select.onchange = e => {
+                const gains = Object.values(presets)[e.target.selectedIndex]
+                gains.forEach((gain, index) => {
+                    const slider = document.getElementById('mixer_' + index)
+                    slider.value = gain
+                    slider.onchange()
+                })
+            }
+            document.body.appendChild(select)
+        })
+    </script>
 </body>
 </html>
